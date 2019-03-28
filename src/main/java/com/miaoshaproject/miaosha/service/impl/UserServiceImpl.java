@@ -4,11 +4,15 @@ import com.miaoshaproject.miaosha.dao.UserDOMapper;
 import com.miaoshaproject.miaosha.dao.UserPasswordDOMapper;
 import com.miaoshaproject.miaosha.dataobject.UserDO;
 import com.miaoshaproject.miaosha.dataobject.UserPasswordDO;
+import com.miaoshaproject.miaosha.error.BusinessException;
+import com.miaoshaproject.miaosha.error.EmBusinessError;
 import com.miaoshaproject.miaosha.service.UserService;
 import com.miaoshaproject.miaosha.service.model.UserModel;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -20,6 +24,7 @@ public class UserServiceImpl implements UserService {
     private UserPasswordDOMapper userPasswordDOMapper;
 
     @Override
+    @Transactional
     public UserModel getUserById(Integer id) {
         //调用userdomapper获取到对应的用户dataobject
         UserDO userDO = userDOMapper.selectByPrimaryKey(id);
@@ -29,6 +34,43 @@ public class UserServiceImpl implements UserService {
         //通过用户id获取对应的用户加密密码信息
         UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
         return convertFromDataObject(userDO, userPasswordDO);
+    }
+
+    @Override
+    public void register(UserModel userModel) throws BusinessException {
+        if (userModel==null){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+        if (StringUtils.isEmpty(userModel.getName())
+                || userModel.getAge()==null
+                || userModel.getGender()==null
+                || StringUtils.isEmpty(userModel.getTelephone())){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+        }
+
+        //实现model->dataobject的方法
+        UserDO userDO = convertFromModel(userModel);
+        userDOMapper.insertSelective(userDO);
+        UserPasswordDO userPasswordDO = converPasswordFromModel(userModel);
+        userPasswordDOMapper.insertSelective(userPasswordDO);
+    }
+
+    private  UserPasswordDO converPasswordFromModel(UserModel userModel){
+        if (userModel==null){
+            return null;
+        }
+        UserPasswordDO userPasswordDO = new UserPasswordDO();
+        userPasswordDO.setEncryptPassword(userModel.getEncryptPassword());
+        userPasswordDO.setUserId(userModel.getId());
+        return userPasswordDO;
+    }
+    private UserDO convertFromModel(UserModel userModel){
+        if (userModel==null){
+            return null;
+        }
+        UserDO userDO = new UserDO();
+        BeanUtils.copyProperties(userModel, userDO);
+        return userDO;
     }
 
     private UserModel convertFromDataObject(UserDO userDO, UserPasswordDO userPasswordDO){
