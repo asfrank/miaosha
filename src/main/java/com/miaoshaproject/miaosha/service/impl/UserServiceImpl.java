@@ -8,6 +8,8 @@ import com.miaoshaproject.miaosha.error.BusinessException;
 import com.miaoshaproject.miaosha.error.EmBusinessError;
 import com.miaoshaproject.miaosha.service.UserService;
 import com.miaoshaproject.miaosha.service.model.UserModel;
+import com.miaoshaproject.miaosha.validator.ValidationResult;
+import com.miaoshaproject.miaosha.validator.ValidatorImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserPasswordDOMapper userPasswordDOMapper;
+
+    @Autowired
+    private ValidatorImpl validator;
 
     @Override
     @Transactional
@@ -42,11 +47,15 @@ public class UserServiceImpl implements UserService {
         if (userModel==null){
             throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
         }
-        if (StringUtils.isEmpty(userModel.getName())
-                || userModel.getAge()==null
-                || userModel.getGender()==null
-                || StringUtils.isEmpty(userModel.getTelephone())){
-            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+//        if (StringUtils.isEmpty(userModel.getName())
+//                || userModel.getAge()==null
+//                || userModel.getGender()==null
+//                || StringUtils.isEmpty(userModel.getTelephone())){
+//            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR);
+//        }
+        ValidationResult validationResult = validator.validate(userModel);
+        if (validationResult.isHasError()){
+            throw new BusinessException(EmBusinessError.PARAMETER_VALIDATION_ERROR, validationResult.getErrMsg());
         }
 
         //实现model->dataobject的方法
