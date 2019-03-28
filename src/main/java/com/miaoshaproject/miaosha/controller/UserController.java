@@ -12,14 +12,18 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import sun.misc.BASE64Encoder;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 
 @Controller("user")
 @RequestMapping("/user")
-@CrossOrigin
+@CrossOrigin(allowCredentials = "true", allowedHeaders = "*")
 public class UserController extends BaseController{
 
     @Autowired
@@ -36,7 +40,7 @@ public class UserController extends BaseController{
                                      @RequestParam(name = "name")String name,
                                      @RequestParam(name = "gender")Byte gender,
                                      @RequestParam(name = "age")Integer age,
-                                     @RequestParam(name = "password")String password) throws BusinessException {
+                                     @RequestParam(name = "password")String password) throws BusinessException, UnsupportedEncodingException, NoSuchAlgorithmException {
         //验证手机号和对应的otpcode相符合
         String inSessionOtpCode = (String) httpServletRequest.getSession().getAttribute(telephone);
         if (!StringUtils.equals(otpCode, inSessionOtpCode)){
@@ -49,11 +53,21 @@ public class UserController extends BaseController{
         userModel.setAge(age);
         userModel.setTelephone(telephone);
         userModel.setRegisterMode("byphone");
-        userModel.setEncryptPassword(MD5Encoder.encode(password.getBytes()));
+        userModel.setEncryptPassword(this.EncodeByMd5(password));
         userService.register(userModel);
         return CommonReturnType.create(null);
     }
 
+    public String EncodeByMd5(String string) throws UnsupportedEncodingException, NoSuchAlgorithmException {
+        //确定计算方法
+        MessageDigest md5 = MessageDigest.getInstance("MD5");
+        BASE64Encoder base64Encoder = new BASE64Encoder();
+        //加密字符串
+        String newstr = base64Encoder.encode(md5.digest(string.getBytes("utf-8")));
+        return newstr;
+    }
+
+    //用户获取otp短信接口
     @RequestMapping(value = "/getotp", method = {RequestMethod.POST}, consumes = {"application/x-www-form-urlencoded"})
     @ResponseBody
     public CommonReturnType getOtp(@RequestParam(name = "telephone")String telephone){
@@ -67,6 +81,7 @@ public class UserController extends BaseController{
         httpServletRequest.getSession().setAttribute(telephone, otpCode);
 
         //todo:将otp验证码通过短信通道发送给用户
+        System.out.println(otpCode);
 
         return CommonReturnType.create(null);
     }
