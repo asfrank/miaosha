@@ -41,6 +41,16 @@ public class ItemController extends BaseController{
         return CommonReturnType.create(itemVO);
     }
 
+    //商品详情页浏览
+    @RequestMapping(value = "/get", method = {RequestMethod.GET})
+    @ResponseBody
+    public CommonReturnType getItem(@RequestParam(name = "id")Integer id){
+        ItemModel itemModel = itemService.getItemById(id);
+
+        ItemVO itemVO = convertVOFromModel(itemModel);
+        return CommonReturnType.create(itemVO);
+    }
+
     private ItemVO convertVOFromModel(ItemModel itemModel){
         if (itemModel==null){
             return null;
