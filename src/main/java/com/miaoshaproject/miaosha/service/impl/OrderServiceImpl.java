@@ -80,9 +80,10 @@ public class OrderServiceImpl implements OrderService {
         String nowDate = now.format(DateTimeFormatter.ISO_DATE).replace("-","");
         stringBuilder.append(nowDate);
         //中间6位为自增序列
-        
+
         //最后2位为分库分表位
         stringBuilder.append("00");
+        return stringBuilder.toString();
     }
 
     private OrderDO convertFromOrderModel(OrderModel orderModel){
