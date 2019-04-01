@@ -1,7 +1,9 @@
 package com.miaoshaproject.miaosha.service.impl;
 
 import com.miaoshaproject.miaosha.dao.OrderDOMapper;
+import com.miaoshaproject.miaosha.dao.SequenceDOMapper;
 import com.miaoshaproject.miaosha.dataobject.OrderDO;
+import com.miaoshaproject.miaosha.dataobject.SequenceDO;
 import com.miaoshaproject.miaosha.error.BusinessException;
 import com.miaoshaproject.miaosha.error.EmBusinessError;
 import com.miaoshaproject.miaosha.service.ItemService;
@@ -13,6 +15,7 @@ import com.miaoshaproject.miaosha.service.model.UserModel;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -31,6 +34,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderDOMapper orderDOMapper;
+
+    @Autowired
+    private SequenceDOMapper sequenceDOMapper;
 
 
     @Override
@@ -51,7 +57,7 @@ public class OrderServiceImpl implements OrderService {
 
         //2.落单减库存
         boolean result = itemService.decreaseStock(itemId, amount);
-        if(result){
+        if(!result){
             throw new BusinessException(EmBusinessError.STOCK_NOT_ENOUGH);
         }
 
@@ -64,14 +70,17 @@ public class OrderServiceImpl implements OrderService {
         orderModel.setOrderPrice(itemModel.getPrice().multiply(new BigDecimal(amount)));
 
         //生成交易流水号，订单号
-
+        orderModel.setId(generateOrderNo());
 
         OrderDO orderDO = convertFromOrderModel(orderModel);
         orderDOMapper.insertSelective(orderDO);
+        //加上商品的销量
+        itemService.increaseSales(itemId, amount);
         //4.返回前端
-        return null;
+        return orderModel;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     private String generateOrderNo(){
         //订单号有16位
         StringBuilder stringBuilder = new StringBuilder();
@@ -80,7 +89,14 @@ public class OrderServiceImpl implements OrderService {
         String nowDate = now.format(DateTimeFormatter.ISO_DATE).replace("-","");
         stringBuilder.append(nowDate);
         //中间6位为自增序列
-
+        SequenceDO sequenceDO = sequenceDOMapper.getSequenceByName("order_info");
+        String currentValue = String.valueOf(sequenceDO.getCurrentValue());
+        for (int i=0;i<6-currentValue.length();i++){
+            stringBuilder.append("0");
+        }
+        stringBuilder.append(currentValue);
+        sequenceDO.setCurrentValue(sequenceDO.getCurrentValue()+sequenceDO.getStep());
+        sequenceDOMapper.updateByPrimaryKeySelective(sequenceDO);
         //最后2位为分库分表位
         stringBuilder.append("00");
         return stringBuilder.toString();
