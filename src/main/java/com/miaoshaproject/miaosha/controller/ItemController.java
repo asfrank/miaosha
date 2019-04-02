@@ -5,6 +5,8 @@ import com.miaoshaproject.miaosha.error.BusinessException;
 import com.miaoshaproject.miaosha.response.CommonReturnType;
 import com.miaoshaproject.miaosha.service.ItemService;
 import com.miaoshaproject.miaosha.service.model.ItemModel;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -46,7 +48,7 @@ public class ItemController extends BaseController{
     //商品详情页浏览
     @RequestMapping(value = "/get", method = {RequestMethod.GET})
     @ResponseBody
-    public CommonReturnType getItem(@RequestParam(name = "id")Integer id){
+    public CommonReturnType getItem(@RequestParam(name = "id")Integer id) throws BusinessException {
         ItemModel itemModel = itemService.getItemById(id);
 
         ItemVO itemVO = convertVOFromModel(itemModel);
@@ -72,6 +74,16 @@ public class ItemController extends BaseController{
         }
         ItemVO itemVO = new ItemVO();
         BeanUtils.copyProperties(itemModel, itemVO);
+        if (itemModel.getPromoModel()!=null){
+            //有正在进行或即将进行的活动
+            itemVO.setPromoStatus(itemModel.getPromoModel().getStatus());
+            itemVO.setPromoId(itemModel.getPromoModel().getId());
+            itemVO.setPromoPrice(itemModel.getPromoModel().getPromoItemPrice());
+            itemVO.setStartDate(itemModel.getPromoModel().getStartDate().toString(DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")));
+
+        }else {
+            itemVO.setPromoStatus(0);
+        }
         return itemVO;
     }
 }
